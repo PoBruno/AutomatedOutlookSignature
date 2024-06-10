@@ -3,49 +3,48 @@
 
 <#
 .SYNOPSIS
-  Outlook Web Signature Script - https://github.com/PoBruno/AutomatedOutlookSignature
+  Script de Assinatura do Outlook Web - https://github.com/PoBruno/AutomatedOutlookSignature
 .DESCRIPTION
-  This script gets each users AD details one at a time, builds their HTML signature and sets it as their Outlook web signature.
+  Este script obtém os detalhes de cada usuário no AD, cria sua assinatura HTML e define como sua assinatura no Outlook web.
 .OUTPUTS
-  All signatures are stored in the $signatureFolder
+  Todas as assinaturas são armazenadas na pasta $signatureFolder
 .NOTES
-  Version:        1.0
-  Author:         Bruno Gomes 
-  Creation Date:  07/12/2020
+  Versão:           1.0
+  Autor:            Bruno Gomes 
+  Data de Criação:  10/06/2024
 #>
 
-#-----[ Configuration ]-----#
+#-----[ Configuração ]-----#
 
-# Sets the folder to store all web signatures and if the folder does exists it will be created.
+# Define a pasta para armazenar todas as assinaturas web e, se a pasta não existir, ela será criada.
 $signatureFolder = "$psscriptroot\Web-Signatures"
-if(!(test-path $signatureFolder)) {
+if (!(test-path $signatureFolder)) {
     New-Item -ItemType "directory" -Path $signatureFolder
 }
 
-#-----[ Functions ]-----#
+#-----[ Funções ]-----#
 
-# This is the function that creates their signature file if it does not exists, or updates it if it differs
+# Esta função cria o arquivo de assinatura se ele não existir ou o atualiza se houver diferenças
 function Create-WebSignatures {
-    # Array storing a list of all users who require a signature update
+    # Array armazenando uma lista de todos os usuários que precisam de atualização de assinatura
     $signaturesToUpdate = @()
 
-    # Gets all users in the Outlook Signature Group
+    # Obtém todos os usuários no grupo de assinaturas do Outlook
     $allStaff = Get-ADGroupMember "Outlook Web Signature"
 
-    # For each user in the All Staff group the below will be ran
+    # Para cada usuário no grupo Todos os Funcionários, o seguinte será executado
     $allStaff | ForEach-Object {
 
-        # Stores the users details in $user
+        # Armazena os detalhes do usuário em $user
         $user = Get-Aduser -Identity $_.distinguishedname -Properties Title, MobilePhone, EmailAddress, extensionattribute1, extensionattribute2, streetaddress, st, l, postalcode, telephonenumber
         
-        # If the user is disabled they are skipped
-        if(!$user.Enabled) 
-        {
-            Write-Host "$($user.Name)'s account is disabled and will be skipped"
+        # Se o usuário estiver desativado, ele será ignorado
+        if (!$user.Enabled) {
+            Write-Host "$($user.Name) está desativado e será ignorado"
             return
         }
         
-        # Saving the users properties in slightly more user frinedly named variables
+        # Salvando as propriedades do usuário em variáveis com nomes mais amigáveis
         $username = ($user.userprincipalName).Substring(0, $user.userprincipalname.IndexOf('@'))
         $displayName = $user.Name
         $jobTitle = $user.Title
@@ -54,39 +53,39 @@ function Create-WebSignatures {
         $namePrefix = $user.extensionattribute1 # Dr etc.
         $namePostfix = $user.extensionattribute2 # Bs(Hons) etc.
 
-        # These are details you can either get from Active directory or as they might be the same for your entire company could statically set them here. Each has a commented out static example, simply swap the commented lines and alter the example.
-        $companyName = $user.company # Company name
-        $street = $user.streetaddress # Street address
-        $city = $user.l # City
-        $state = $user.st # State
-        $zipCode = $user.postalcode # Postcode 
-        $telephone = $user.telephonenumber # Telephone number
+        # Estes são detalhes que você pode obter do Active Directory ou, se forem os mesmos para toda a empresa, podem ser definidos estaticamente aqui. Cada um tem um exemplo estático comentado, basta trocar as linhas comentadas e alterar o exemplo.
+        $companyName = $user.company # Nome da empresa
+        $street = $user.streetaddress # Endereço
+        $city = $user.l # Cidade
+        $state = $user.st # Estado
+        $zipCode = $user.postalcode # CEP 
+        $telephone = $user.telephonenumber # Número de telefone
         $website = "www.example.co.uk" # Website
         $logo = "https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" # Logo
 
-        # Gathers a list of all groups the user is a member of
+        # Reúne uma lista de todos os grupos dos quais o usuário é membro
         $groups = Get-ADPrincipalGroupMembership $_ | select name
 
-        # Group Check Example
+        # Exemplo de Verificação de Grupo
         $Group = [ADSI]"LDAP://cn=IT Staff,OU=Groups,DC=Example,DC=co,DC=uk"
         $Group.Member | ForEach-Object {
-        if ($user.distinguishedname -match $_) {
+            if ($user.distinguishedname -match $_) {
                 $ItStaff = $true
             }
         }
 
         $address = $null
 
-        # Building address        
-        if($street){ $address = "$($street), " } 
-        if($city){ $address = $address + "$($city), " }
-        if($state){ $address = $address + "$($state), " }
-        if($zipCode){ $address = $address + $zipCode }
+        # Construindo endereço        
+        if ($street) { $address = "$($street), " } 
+        if ($city) { $address = $address + "$($city), " }
+        if ($state) { $address = $address + "$($state), " }
+        if ($zipCode) { $address = $address + $zipCode }
     
     
-  # Building Style Sheet
-  $style = 
-  @"
+        # Construindo Folha de Estilo
+        $style = 
+        @"
   <style>
   p, table, td, tr, a, span { 
       font-family: Arial, Helvetica, sans-serif;
@@ -122,9 +121,9 @@ function Create-WebSignatures {
   </style>
 "@
 
-  # Building HTML
-  $signature = 
-  @"
+        # Construindo HTML
+        $signature = 
+        @"
     $(if($displayName){"<span><b>"+$displayName+"</b></span><br />"})
     $(if($jobTitle){"<span>"+$jobTitle+"</span><br /><br />"})
 
@@ -141,7 +140,7 @@ function Create-WebSignatures {
                       $(if($state){ $state+", " })
                       $(if($zipCode){ $zipCode })
                     </td></tr>
-                    $(if($ITMember){"<tr><td td colspan='2'>IT Helpdesk: 0188887 55555 6666</tr></td>"})
+                    $(if($ITMember){"<tr><td colspan='2'>IT Helpdesk: 0188887 55555 6666</tr></td>"})
                     $(if($telephone){"<tr><td>T: </td><td><a href='tel:$telephone'>$($telephone)</a></td></tr>"})
                     $(if($mobileNumber){"<tr><td>M: </td><td><a href='tel:$mobileNumber'>$($mobileNumber)</a></td></tr>"})
                     $(if($email){"<tr><td>E: </td><td><a href='mailto:$email'>$($email)</a></td></tr>"})
@@ -154,21 +153,22 @@ function Create-WebSignatures {
   <br />
 "@
 
-        # If the file exists it will compare them for changes and if there are changes it will mark them as needing an update
-        if(test-path "$signatureFolder\$email.html"){          
+        # Se o arquivo existir, ele comparará as assinaturas e, se houver alterações, marcará como necessitando de uma atualização
+        if (test-path "$signatureFolder\$email.html") {          
             $currentSig = (Get-Content "$signatureFolder\$email.html" | out-string).TrimEnd()
 
-            if($currentSig -eq $signature)
-            {
-                write-host "Signature found for $displayname - No update required." -ForegroundColor green
-            } else {
-                write-host "Signature found for $displayname - Update required." -ForegroundColor yellow
+            if ($currentSig -eq $signature) {
+                write-host "Assinatura encontrada para $displayname - Nenhuma atualização necessária." -ForegroundColor green
+            }
+            else {
+                write-host "Assinatura encontrada para $displayname - Atualização necessária." -ForegroundColor yellow
                 Remove-Item -Path "$signatureFolder\$email.html" -Force
                 $signature | Out-File "$signatureFolder\$email.html"
                 $signaturesToUpdate += $email
             }
-        } else {
-            write-host "No Signature found for $displayName. Creating Signature" -ForegroundColor Red
+        }
+        else {
+            write-host "Nenhuma assinatura encontrada para $displayName. Criando assinatura" -ForegroundColor Red
             $signature | Out-File "$signatureFolder\$email.html"
             $signaturesToUpdate += $email
         }
@@ -176,7 +176,7 @@ function Create-WebSignatures {
     return $signaturesToUpdate
 }
 
-# This function is passed all the users who have no signature or need an update and uses their signature file to update their web signature.
+# Esta função recebe todos os usuários que não têm assinatura ou precisam de atualização e usa o arquivo de assinatura para atualizar sua assinatura web.
 function Update-WebSignatures {
     [CmdletBinding()]
     param (
@@ -185,35 +185,36 @@ function Update-WebSignatures {
         $userEmailAddress
     )
 
-    write-host "Setting signature on mailbox: $userEmailAddress"
+    write-host "Definindo assinatura na caixa de correio: $userEmailAddress"
     
-    # Gets their signature content out of the file.
+    # Obtém o conteúdo da assinatura do arquivo.
     $signature = Get-Content "$signatureFolder\$userEmailAddress.html"
 
-    # Sets the users signature to the content from within the file. 
+    # Define a assinatura do usuário com o conteúdo do arquivo.
     Get-Mailbox $userEmailAddress | Set-MailboxMessageConfiguration -SignatureHTML $signature -AutoAddSignature:$true
 }
 
-#-----[ Execution ]-----#
+#-----[ Execução ]-----#
 
-# Creates all new/modified signatures and outputs a list of who needs them altered online
+# Cria todas as assinaturas novas/modificadas e gera uma lista de quem precisa delas alteradas online
 $usersToUpdate = Create-WebSignatures
 
-# If any users need a new / modified signature this section will run
-if($usersToUpdate.Count -gt 0) {
+# Se algum usuário precisar de uma nova assinatura/modificação, esta seção será executada
+if ($usersToUpdate.Count -gt 0) {
     try {
-        Write-Host "Connecting to Exchange Online"
+        Write-Host "Conectando ao Exchange Online"
         Connect-ExchangeOnline
 
-        foreach ($usertoUpdate in $usersToUpdate)
-        {
-            # This calls the function for each of the users that needs an updated signature
+        foreach ($usertoUpdate in $usersToUpdate) {
+            # Isso chama a função para cada um dos usuários que precisa de uma assinatura atualizada
             Update-WebSignatures $usertoUpdate
         }
-    } catch {
+    }
+    catch {
         write-host "Oh dear something went wrong" -ForegroundColor Red
-    } finally {
-        Write-Host "Disconneting Exchange Online"
+    }
+    finally {
+        Write-Host "Desconectando do Exchange Online"
         Disconnect-ExchangeOnline -Confirm:$false
     }
 }
