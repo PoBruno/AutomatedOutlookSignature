@@ -17,8 +17,6 @@ Durante o processo de logon do usuário, o script é executado em segundo plano,
 [EduGeek Post](http://www.edugeek.net/forums/scripts/205976-outlook-email-signature-automation-ad-attributes.html#post1760284)
 
 ### Active Directory
-A selection of Active Directory attribute are already configured in the script and listed below however more attributes can be easily added. 
-
 Uma seleção de atributos do Active Directory já está configurada no script e listada abaixo, mas mais atributos podem ser facilmente adicionados.
 
 As seguintes propriedades são usadas do Active Directory no script:
