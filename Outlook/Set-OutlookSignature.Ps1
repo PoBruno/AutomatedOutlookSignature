@@ -15,7 +15,7 @@
 .NOTES
   Versão:        4.0
   Autor:         Bruno Gomes
-  Modificado:    24/04/2023
+  Modificado:    10/06/2024
 #>
 
 # Tenta obter o usuário do Active Directory, se nenhum usuário for encontrado ou houver um problema, o script será encerrado
