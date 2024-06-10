@@ -1,78 +1,78 @@
 <#
 .SYNOPSIS
-  Dynamic Outlook Signature Creation - https://github.com/PoBruno/AutomatedOutlookSignature
+  Criação Dinâmica de Assinatura do Outlook - https://github.com/PoBruno/AutomatedOutlookSignature
 .DESCRIPTION
-  This script uses properties from ActiveDirectory to populate the .htm and .txt file which are then stored in the $folderlocation with the name $filename.htm and $filename.txt. 
-  The script can be ran as either a scheduled task at logon or preferably a Group Policy Logon script, more details on this can be found in the GitHub ReadMe.
-  The script uses if statements to ensure if a user, for example, doesn't have a mobile number then that entire section of the signature is not uncluded, this makes the signature look much more professional and 
-  if the user is given a mobile number, at next logon it will be added to their signature. 
-  The script can also add additional parts based on group membership, the example given in this script is being a member of IT Staff adds Helpdesk contact information. 
+  Este script utiliza propriedades do ActiveDirectory para preencher os arquivos .htm e .txt que são então armazenados na $folderlocation com o nome $filename.htm e $filename.txt. 
+  O script pode ser executado como uma tarefa agendada na inicialização ou, de preferência, como um script de Logon de Política de Grupo. Mais detalhes podem ser encontrados no GitHub ReadMe.
+  O script usa instruções if para garantir que, se um usuário, por exemplo, não tiver um número de celular, essa seção inteira da assinatura não seja incluída. Isso torna a assinatura muito mais profissional e, 
+  se o usuário receber um número de celular, na próxima inicialização, ele será adicionado à sua assinatura. 
+  O script também pode adicionar partes adicionais com base na associação ao grupo. O exemplo dado neste script é ser membro da Equipe de TI adicionando informações de contato do Helpdesk. 
 .INPUTS
-  Several properties for the user are taken directly from Active Directory, for more details on this please see the ReadMe on GitHub.
+  Várias propriedades do usuário são extraídas diretamente do Active Directory. Para mais detalhes, consulte o ReadMe no GitHub.
 .OUTPUTS
-  $folderlocation\$filename.htm - HTML signature for rich text emails
-  $folderlocation\$filename.txt - Text signautre for none rich text emails
+  $folderlocation\$filename.htm - Assinatura HTML para e-mails em rich text
+  $folderlocation\$filename.txt - Assinatura em texto para e-mails sem rich text
 .NOTES
-  Version:        4.0
-  Author:         Bruno Gomes
-  Modified:       24/04/2023
+  Versão:        4.0
+  Autor:         Bruno Gomes
+  Modificado:    24/04/2023
 #>
 
-# Attempt to get the user from Active Directory, if no user is found or there is an issue the script will exit
+# Tenta obter o usuário do Active Directory, se nenhum usuário for encontrado ou houver um problema, o script será encerrado
 try {
   $user = (([adsisearcher]"(&(objectCategory=User)(samaccountname=$env:username))").FindOne().Properties)
 } catch {
-  Write-Host "Error: Unable to query Active Directory for user information. Details: $($_.Exception.Message)"
+  Write-Host "Erro: Não foi possível consultar o Active Directory para obter informações do usuário. Detalhes: $($_.Exception.Message)"
   exit
 }
 
-# Create the signatures folder and sets the name of the signature file
+# Cria a pasta de assinaturas e define o nome do arquivo de assinatura
 $folderLocation = Join-Path -Path $Env:appdata -ChildPath 'Microsoft\signatures'
 $filename = 'Signature'
 $file  = Join-Path -Path $folderLocation -ChildPath $filename
 
-# If the folder does not exist create it
+# Se a pasta não existir, cria-a
 if (-not (Test-Path -Path $folderLocation)) {
   try {
       New-Item -ItemType directory -Path $folderLocation
   } catch {
-      Write-Host "Error: Unable to create the signatures folder. Details: $($_.Exception.Message)"
+      Write-Host "Erro: Não foi possível criar a pasta de assinaturas. Detalhes: $($_.Exception.Message)"
       exit
   }
 }
 
-# Logo to be used - if different users need different logos you could consider using their extenstionAttributes or another property in Active Directory to store the URL for their logo.
-$logo = 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png' # Please note that if you do include a logo it must be located somewhere on the internet that the public has access to, many users upload it to their website.
+# Logotipo a ser usado - se diferentes usuários precisarem de logotipos diferentes, você pode considerar usar suas extensionAttributes ou outra propriedade no Active Directory para armazenar a URL de seus logotipos.
+$logo = 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png' # Observe que, se você incluir um logotipo, ele deve estar localizado em algum lugar na internet ao qual o público tenha acesso; muitos usuários o enviam para o site deles.
 
-# Get the users properties (These should always be in Active Directory and Unique)
-if($user.name.count -gt 0){$displayName = $user.name[0]} # Display Name
-if($user.title.count -gt 0){$jobTitle = $user.title[0]} # Job Title
-if($user.mail.count -gt 0){$email = $user.mail[0]} # Email Address
+# Obtém as propriedades dos usuários (Estas devem estar sempre no Active Directory e ser Únicas)
+if($user.name.count -gt 0){$displayName = $user.name[0]} # Nome de Exibição
+if($user.title.count -gt 0){$jobTitle = $user.title[0]} # Título do Trabalho
+if($user.mail.count -gt 0){$email = $user.mail[0]} # Endereço de E-mail
 
-if($user.mobile.count -gt 0){$mobileNumber = $user.mobile[0]} # Mobile number
-if($user.homephone.count -gt 0){$directDial = $user.homephone[0]} # Home number
-if($user.telephonenumber.count -gt 0){$telephone = $user.telephonenumber[0]} # Office number
+if($user.mobile.count -gt 0){$mobileNumber = $user.mobile[0]} # Número de Celular
+if($user.homephone.count -gt 0){$directDial = $user.homephone[0]} # Número Residencial
+if($user.telephonenumber.count -gt 0){$telephone = $user.telephonenumber[0]} # Número de Escritório
 
-# Company name and website
-if($user.company.count -gt 0){$companyName = $user.company[0]} # Company name
-if($user.wwwhomepage.count -gt 0){$website = $user.wwwhomepage[0]} # Webpage address
+# Nome da empresa e site
+if($user.company.count -gt 0){$companyName = $user.company[0]} # Nome da Empresa
+if($user.wwwhomepage.count -gt 0){$website = $user.wwwhomepage[0]} # Endereço da Página Web
 
-# Address
-if($user.postofficebox.count -gt 0){$poBox = $user.postofficebox[0]} # PO box number
-if($user.physicaldeliveryofficename.count -gt 0){$office = $user.physicaldeliveryofficename} # Office Name
-if($user.streetaddress.count -gt 0){$street = $user.streetaddress[0]} # Street address
-if($user.l.count -gt 0){$city = $user.l[0]} # City
-if($user.st.count -gt 0){$state = $user.st[0]} # State
-if($user.postalcode.count -gt 0){$zipCode = $user.postalcode[0]} # Post code / Zip code
+# Endereço
+if($user.postofficebox.count -gt 0){$poBox = $user.postofficebox[0]} # Número da Caixa Postal
+if($user.physicaldeliveryofficename.count -gt 0){$office = $user.physicaldeliveryofficename} # Nome do Escritório
+if($user.streetaddress.count -gt 0){$street = $user.streetaddress[0]} # Endereço
+if($user.l.count -gt 0){$city = $user.l[0]} # Cidade
+if($user.st.count -gt 0){$state = $user.st[0]} # Estado
+if($user.postalcode.count -gt 0){$zipCode = $user.postalcode[0]} # Código Postal / CEP
 
-# Extended attributes
-if($user.extensionAttribute1.count -gt 0){$attribute1 = $user.extensionAttribute1[0]} # Custom attribute 1
-if($user.extensionAttribute2.count -gt 0){$attribute2 = $user.extensionAttribute2[0]} # Custom attribute 2
-if($user.extensionAttribute3.count -gt 0){$attribute3 = $user.extensionAttribute3[0]} # Custom attribute 3
-if($user.extensionAttribute4.count -gt 0){$attribute4 = $user.extensionAttribute4[0]} # Custom attribute 4
-if($user.extensionAttribute5.count -gt 0){$attribute5 = $user.extensionAttribute5[0]} # Custom attribute 5
+# Atributos Estendidos
+if($user.extensionAttribute1.count -gt 0){$attribute1 = $user.extensionAttribute1[0]} # Atributo Personalizado 1
+if($user.extensionAttribute2.count -gt 0){$attribute2 = $user.extensionAttribute2[0]} # Atributo Personalizado 2
+if($user.extensionAttribute3.count -gt 0){$attribute3 = $user.extensionAttribute3[0]} # Atributo Personalizado 3
+if($user.extensionAttribute4.count -gt 0){$attribute4 = $user.extensionAttribute4[0]} # Atributo Personalizado 4
+if($user.extensionAttribute5.count -gt 0){$attribute5 = $user.extensionAttribute5[0]} # Atributo Personalizado 5
 
-# Group Check Example
+# Exemplo de Verificação de Grupo
 $Group = [ADSI]"LDAP://cn=IT Staff,OU=Groups,DC=Example,DC=co,DC=uk"
 $Group.Member | ForEach-Object {
 if ($user.distinguishedname -match $_) {
@@ -80,7 +80,7 @@ if ($user.distinguishedname -match $_) {
     }
 }
 
-# Building Style Sheet
+# Construindo Folha de Estilo
 $style = 
 @"
 <style>
@@ -118,7 +118,7 @@ table.main {
 </style>
 "@
 
-# Building HTML
+# Construindo HTML
 $signature = 
 @"
   $(if($displayName){"<span><b>"+$displayName+"</b></span><br />"})
@@ -137,7 +137,7 @@ $signature =
                     $(if($state){ $state+", " })
                     $(if($zipCode){ $zipCode })
                   </td></tr>
-                  $(if($ITMember){"<tr><td td colspan='2'>IT Helpdesk: 0188887 55555 6666</tr></td>"})
+                  $(if($ITMember){"<tr><td td colspan='2'>Helpdesk de TI: 0188887 55555 6666</tr></td>"})
                   $(if($telephone){"<tr><td>T: </td><td><a href='tel:$telephone'>$($telephone)</a></td></tr>"})
                   $(if($mobileNumber){"<tr><td>M: </td><td><a href='tel:$mobileNumber'>$($mobileNumber)</a></td></tr>"})
                   $(if($email){"<tr><td>E: </td><td><a href='mailto:$email'>$($email)</a></td></tr>"})
@@ -150,16 +150,15 @@ $signature =
 <br />
 "@
 
-# Save the HTML to the signature file
+# Salva o HTML no arquivo de assinatura
 try {
   $style + $signature | Out-File -FilePath "$file.htm" -Encoding ascii
 } catch {
-  Write-Host "Error: Unable to save the HTML signature file. Details: $($_.Exception.Message)"
+  Write-Host "Erro: Não foi possível salvar o arquivo de assinatura HTML. Detalhes: $($_.Exception.Message)"
   exit
 }
 
-
-# Build the txt version for none rich text emails
+# Cria a versão txt para e-mails sem rich text
 $signature = 
 @"
 $(if($displayName){ $displayName })
@@ -172,22 +171,22 @@ $(if($city){ $city+", " })
 $(if($state){ $state+", " })
 $(if($zipCode){ $zipCode })
 
-$(if($ITMember){"For IT Helpdesk Call 0191231 212313"})
+$(if($ITMember){"Para o Helpdesk de TI ligue 0191231 212313"})
 $(if($telephone){"T: "+$telephone})
 $(if($mobileNumber){"M: "+$mobileNumber})
 $(if($email){"E: "+$email})
 $(if($website){"W: "+$website})
 "@
 
-# Output the text to the signatures folder
+# Salva o texto na pasta de assinaturas
 try {
   $signature | out-file "$file.txt" -encoding ascii
 } catch {
-  Write-Host "Error: Unable to save the text signature file. Details: $($_.Exception.Message)"
+  Write-Host "Erro: Não foi possível salvar o arquivo de assinatura de texto. Detalhes: $($_.Exception.Message)"
   exit
 }
 
-# Setting the regkeys for Outlook 2016
+# Definindo as chaves de registro para Outlook 2016
 if (test-path "HKCU:\\Software\\Microsoft\\Office\\16.0\\Common\\General") 
 {
     get-item -path HKCU:\\Software\\Microsoft\\Office\\16.0\\Common\\General | new-Itemproperty -name Signatures -value signatures -propertytype string -force
@@ -196,7 +195,7 @@ if (test-path "HKCU:\\Software\\Microsoft\\Office\\16.0\\Common\\General")
     Remove-ItemProperty -Path HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Setup -Name "First-Run" -ErrorAction silentlycontinue
 }
 
-# Setting the regkeys for Outlook 2010 - Thank you AJWhite1970 for the 2010 registry keys
+# Definindo as chaves de registro para Outlook 2010 - Obrigado AJWhite1970 pelas chaves de registro de 2010
 if (test-path "HKCU:\\Software\\Microsoft\\Office\\14.0\\Common\\General") 
 {
     get-item -path HKCU:\\Software\\Microsoft\\Office\\14.0\\Common\\ General | new-Itemproperty -name Signatures -value signatures -propertytype string -force
