@@ -14,8 +14,6 @@ Recomendo usar o script como um script de logon em Política de Grupo. - [Config
 
 Durante o processo de logon do usuário, o script é executado em segundo plano, recupera os detalhes necessários do usuário, gera um novo arquivo de assinatura e substitui o existente. Além disso, o script define chaves de registro para configurar a nova assinatura criada como a assinatura padrão do Outlook do usuário. Isso garante que, se houver alterações nos detalhes, como o título do cargo, a assinatura será atualizada automaticamente no próximo logon.
 
-[EduGeek Post](http://www.edugeek.net/forums/scripts/205976-outlook-email-signature-automation-ad-attributes.html#post1760284)
-
 ### Active Directory
 Uma seleção de atributos do Active Directory já está configurada no script e listada abaixo, mas mais atributos podem ser facilmente adicionados.
 
